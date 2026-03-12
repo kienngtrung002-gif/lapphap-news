@@ -1,0 +1,45 @@
+name: Tao sach EPUB tu dong
+
+on:
+  schedule:
+    - cron: '0 23 * * *' # Tự động chạy vào 6h sáng giờ VN mỗi ngày (23h UTC)
+  workflow_dispatch: # Tạo nút bấm để bạn có thể chạy thử thủ công bất cứ lúc nào
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v3
+
+      - name: Cài đặt Calibre trên máy ảo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y calibre
+
+      - name: Chạy công thức tạo sách EPUB
+        run: |
+          ebook-convert lapphap.recipe lapphap.epub
+          
+      - name: Tạo kho thư viện ảo (OPDS) cho KOReader
+        run: |
+          mkdir public
+          cp lapphap.epub public/
+          echo "<html><head><meta charset='utf-8'><title>Kho sách cá nhân</title></head><body><h1>Sách tự động</h1><p><a href='lapphap.epub'>Tải Tạp chí Lập pháp EPUB (Cập nhật ngày $(date +'%d/%m/%Y'))</a></p></body></html>" > public/index.html
+
+      - name: Thiết lập GitHub Pages
+        uses: actions/configure-pages@v3
+
+      - name: Đóng gói file tải lên
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './public'
+
+      - name: Xuất bản lên web
+        id: deployment
+        uses: actions/deploy-pages@v2
