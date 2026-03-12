@@ -2,8 +2,8 @@ name: Tao sach EPUB tu dong
 
 on:
   schedule:
-    - cron: '0 23 * * *' # Tự động chạy vào 6h sáng giờ VN mỗi ngày
-  workflow_dispatch: # Nút bấm chạy thủ công
+    - cron: '0 23 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,15 +25,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y calibre
 
-      - name: Chạy công thức tạo sách EPUB
+      - name: Chạy công thức tạo sách EPUB có gắn ngày tháng
         run: |
-          ebook-convert lapphap.recipe lapphap.epub
+          TODAY=$(date +'%d_%m_%Y')
+          ebook-convert lapphap.recipe lapphap_$TODAY.epub
           
-      - name: Tạo kho thư viện ảo (OPDS) cho KOReader
+      - name: Tạo kho thư viện ảo (OPDS) chuẩn XML cho KOReader
         run: |
+          TODAY=$(date +'%d_%m_%Y')
+          DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           mkdir public
-          cp lapphap.epub public/
-          echo "<html><head><meta charset='utf-8'><title>Kho sách cá nhân</title></head><body><h1>Sách tự động</h1><p><a href='lapphap.epub'>Tải Tạp chí Lập pháp EPUB (Cập nhật ngày $(date +'%d/%m/%Y'))</a></p></body></html>" > public/index.html
+          cp lapphap_$TODAY.epub public/
+          
+          # Tạo file thư viện chuẩn OPDS
+          cat <<EOF > public/atom.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog">
+            <id>urn:uuid:lapphap-news</id>
+            <title>Báo Cập Nhật Tự Động</title>
+            <updated>${DATETIME}</updated>
+            <author><name>Hệ thống tự động</name></author>
+            <link rel="self" href="atom.xml" type="application/atom+xml;profile=opds-catalog;kind=navigation"/>
+            <link rel="start" href="atom.xml" type="application/atom+xml;profile=opds-catalog;kind=navigation"/>
+            <entry>
+              <title>Tạp chí Lập pháp (Bản ngày $(date +'%d/%m/%Y'))</title>
+              <id>lapphap_${TODAY}</id>
+              <updated>${DATETIME}</updated>
+              <content type="text">Đóng gói tự động từ lapphap.vn</content>
+              <link rel="http://opds-spec.org/acquisition" href="lapphap_${TODAY}.epub" type="application/epub+zip"/>
+            </entry>
+          </feed>
+          EOF
 
       - name: Thiết lập GitHub Pages
         uses: actions/configure-pages@v4
