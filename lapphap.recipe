@@ -1,0 +1,35 @@
+from calibre.web.feeds.news import BasicNewsRecipe
+import re
+
+class LapPhapVN(BasicNewsRecipe):
+    title          = 'Tạp chí Lập pháp'
+    description    = 'Tin tức cập nhật từ lapphap.vn'
+    oldest_article = 3
+    max_articles_per_feed = 30
+    auto_cleanup   = True
+    language       = 'vi'
+    simultaneous_downloads = 5
+
+    def parse_index(self):
+        url = 'http://lapphap.vn'
+        soup = self.index_to_soup(url)
+        
+        articles = []
+        seen_titles = set()
+        
+        for link in soup.findAll('a'):
+            title = link.text.strip()
+            url_article = link.get('href', '')
+            
+            if title and url_article and ('/Pages/' in url_article or '.html' in url_article):
+                if url_article.startswith('/'):
+                    url_article = 'http://lapphap.vn' + url_article
+                
+                if len(title) > 20 and title not in seen_titles:
+                    articles.append({
+                        'title': title,
+                        'url': url_article
+                    })
+                    seen_titles.add(title)
+        
+        return [('Tin mới nhất', articles[:self.max_articles_per_feed])]
